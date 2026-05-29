@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>LY5120 · Krakow → Tel Aviv · Live Landing Tracker</title>
+<meta name="description" content="Live arrival tracker for El Al flight LY5120 from Krakow to Tel Aviv. See when he lands." />
+<meta name="theme-color" content="#0a0e1a" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9C%88%EF%B8%8F%3C/text%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#070a14;
+    --bg2:#0c1226;
+    --card:rgba(20,26,48,0.55);
+    --card-border:rgba(255,255,255,0.08);
+    --text:#eaf0ff;
+    --muted:#8b94b3;
+    --faint:#5b6488;
+    --accent:#5b8cff;
+    --green:#2ee6a6;
+    --green-glow:rgba(46,230,166,0.35);
+    --blue:#39c0ff;
+    --blue-glow:rgba(57,192,255,0.35);
+    --amber:#ffb454;
+    --amber-glow:rgba(255,180,84,0.35);
+    --red:#ff5d7a;
+    --red-glow:rgba(255,93,122,0.35);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:'Inter',system-ui,-apple-system,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    min-height:100dvh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px 18px;
+    overflow-x:hidden;
+    position:relative;
+    -webkit-font-smoothing:antialiased;
+  }
+  /* ---- aurora background ---- */
+  .aurora{position:fixed;inset:0;z-index:-2;overflow:hidden;background:
+      radial-gradient(1200px 700px at 15% -10%,#13204a 0%,transparent 55%),
+      radial-gradient(1000px 800px at 110% 10%,#1a1140 0%,transparent 50%),
+      linear-gradient(180deg,var(--bg) 0%,var(--bg2) 60%,var(--bg) 100%);}
+  .aurora::before,.aurora::after{content:"";position:absolute;border-radius:50%;filter:blur(80px);opacity:.5;mix-blend-mode:screen;}
+  .aurora::before{width:520px;height:520px;left:-120px;top:-80px;background:radial-gradient(circle,#2e6bff,transparent 70%);animation:float1 16s ease-in-out infinite;}
+  .aurora::after{width:480px;height:480px;right:-120px;bottom:-120px;background:radial-gradient(circle,#7a3bff,transparent 70%);animation:float2 19s ease-in-out infinite;}
+  @keyframes float1{0%,100%{transform:translate(0,0)}50%{transform:translate(60px,40px)}}
+  @keyframes float2{0%,100%{transform:translate(0,0)}50%{transform:translate(-50px,-30px)}}
+  .stars{position:fixed;inset:0;z-index:-1;background-image:
+      radial-gradient(1px 1px at 20% 30%,rgba(255,255,255,.7),transparent),
+      radial-gradient(1px 1px at 70% 60%,rgba(255,255,255,.5),transparent),
+      radial-gradient(1px 1px at 40% 80%,rgba(255,255,255,.6),transparent),
+      radial-gradient(1.5px 1.5px at 85% 20%,rgba(255,255,255,.5),transparent),
+      radial-gradient(1px 1px at 10% 70%,rgba(255,255,255,.45),transparent);
+      background-repeat:repeat;background-size:600px 600px;opacity:.45;}
+
+  /* ---- card ---- */
+  .card{
+    width:100%;max-width:520px;
+    background:var(--card);
+    border:1px solid var(--card-border);
+    border-radius:28px;
+    padding:30px 28px 24px;
+    backdrop-filter:blur(22px) saturate(140%);
+    -webkit-backdrop-filter:blur(22px) saturate(140%);
+    box-shadow:0 30px 80px -20px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.06);
+    position:relative;
+    animation:rise .7s cubic-bezier(.2,.8,.2,1) both;
+  }
+  @keyframes rise{from{opacity:0;transform:translateY(18px) scale(.985)}to{opacity:1;transform:none}}
+
+  .topline{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px;}
+  .flightno{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;letter-spacing:.14em;color:var(--text);display:flex;align-items:center;gap:9px;}
+  .flightno .dot{width:7px;height:7px;border-radius:50%;background:var(--faint);box-shadow:0 0 0 0 rgba(46,230,166,.6);}
+  .flightno.live .dot{background:var(--green);animation:pulse 1.8s ease-out infinite;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 var(--green-glow)}70%{box-shadow:0 0 0 9px rgba(46,230,166,0)}100%{box-shadow:0 0 0 0 rgba(46,230,166,0)}}
+  .airline{font-size:11px;color:var(--faint);letter-spacing:.12em;text-transform:uppercase;font-weight:600;}
+
+  /* ---- route ---- */
+  .route{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px;}
+  .port{flex:0 0 auto;text-align:center;min-width:74px;}
+  .port .code{font-family:'Space Grotesk',sans-serif;font-size:30px;font-weight:700;line-height:1;}
+  .port .city{font-size:11px;color:var(--muted);margin-top:5px;letter-spacing:.04em;}
+  .port .flag{font-size:18px;margin-bottom:6px;display:block;}
+  .port.right{text-align:center;}
+
+  .path{flex:1 1 auto;position:relative;height:62px;margin-top:14px;}
+  .path .line{position:absolute;top:50%;left:0;right:0;height:2px;transform:translateY(-50%);
+    background:repeating-linear-gradient(90deg,var(--faint) 0 6px,transparent 6px 12px);opacity:.45;}
+  .path .progress{position:absolute;top:50%;left:0;height:2px;transform:translateY(-50%);
+    background:linear-gradient(90deg,var(--blue),var(--green));border-radius:2px;width:0;
+    box-shadow:0 0 12px var(--green-glow);transition:width 1.2s cubic-bezier(.4,0,.2,1);}
+  .plane{position:absolute;top:50%;left:0;transform:translate(-50%,-50%) rotate(90deg);
+    font-size:22px;filter:drop-shadow(0 4px 10px rgba(57,192,255,.5));transition:left 1.2s cubic-bezier(.4,0,.2,1);will-change:left;}
+  .path .endpoint{position:absolute;top:50%;width:9px;height:9px;border-radius:50%;transform:translate(-50%,-50%);background:var(--text);}
+  .path .endpoint.start{left:0;background:var(--blue);}
+  .path .endpoint.end{right:0;left:auto;transform:translate(50%,-50%);background:var(--faint);}
+  .path .endpoint.end.reached{background:var(--green);box-shadow:0 0 12px var(--green-glow);}
+
+  /* ---- status badge ---- */
+  .statuswrap{margin:18px 0 6px;text-align:center;}
+  .badge{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:999px;
+    font-weight:600;font-size:13.5px;letter-spacing:.02em;border:1px solid transparent;transition:.3s;}
+  .badge .b-dot{width:8px;height:8px;border-radius:50%;background:currentColor;}
+  .badge.green{color:var(--green);background:rgba(46,230,166,.08);border-color:rgba(46,230,166,.3);}
+  .badge.blue{color:var(--blue);background:rgba(57,192,255,.08);border-color:rgba(57,192,255,.3);}
+  .badge.amber{color:var(--amber);background:rgba(255,180,84,.08);border-color:rgba(255,180,84,.3);}
+  .badge.red{color:var(--red);background:rgba(255,93,122,.08);border-color:rgba(255,93,122,.3);}
+  .badge.grey{color:var(--muted);background:rgba(139,148,179,.08);border-color:rgba(139,148,179,.25);}
+
+  /* ---- hero landing time ---- */
+  .hero{text-align:center;margin:20px 0 6px;}
+  .hero .label{font-size:12px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase;font-weight:600;}
+  .hero .time{font-family:'Space Grotesk',sans-serif;font-size:64px;font-weight:700;line-height:1;margin:8px 0 2px;
+    background:linear-gradient(180deg,#fff,#b9c6ff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+    letter-spacing:-.01em;}
+  .hero .tz{font-size:12px;color:var(--faint);letter-spacing:.06em;}
+  .hero .countdown{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:500;color:var(--text);margin-top:14px;
+    padding:9px 0;border-top:1px solid rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.06);}
+  .hero .countdown .accent{color:var(--green);}
+
+  /* ---- meta grid ---- */
+  .meta{display:grid;grid-template-columns:1fr 1fr;gap:1px;margin-top:20px;border-radius:16px;overflow:hidden;
+    background:rgba(255,255,255,.05);}
+  .meta .cell{background:rgba(13,18,38,.6);padding:13px 15px;}
+  .meta .k{font-size:10.5px;color:var(--faint);letter-spacing:.1em;text-transform:uppercase;font-weight:600;}
+  .meta .v{font-size:16px;font-weight:600;margin-top:4px;font-family:'Space Grotesk',sans-serif;}
+  .meta .v.mono{font-family:'JetBrains Mono',monospace;font-size:15px;}
+  .meta .v small{font-size:11px;color:var(--muted);font-family:'Inter';font-weight:500;}
+  .v.up{color:var(--blue)} .v.ok{color:var(--green)} .v.warn{color:var(--amber)} .v.bad{color:var(--red)}
+
+  /* ---- footer ---- */
+  .foot{margin-top:20px;display:flex;flex-direction:column;gap:12px;}
+  .links{display:flex;gap:10px;}
+  .links a{flex:1;text-align:center;padding:11px 8px;border-radius:13px;font-size:12.5px;font-weight:600;
+    color:var(--text);text-decoration:none;background:rgba(255,255,255,.05);border:1px solid var(--card-border);
+    transition:.2s;letter-spacing:.01em;}
+  .links a:hover{background:rgba(91,140,255,.14);border-color:rgba(91,140,255,.4);transform:translateY(-1px);}
+  .updated{display:flex;align-items:center;justify-content:center;gap:10px;font-size:11.5px;color:var(--faint);}
+  .updated button{background:none;border:none;color:var(--accent);font:inherit;font-size:11.5px;cursor:pointer;
+    display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border-radius:8px;transition:.2s;}
+  .updated button:hover{background:rgba(91,140,255,.12)}
+  .updated button svg{width:13px;height:13px}
+  .updated button.spin svg{animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .note{text-align:center;font-size:12px;color:var(--muted);margin-top:2px;line-height:1.5;}
+  .note .heart{color:var(--red)}
+
+  .src{text-align:center;font-size:10px;color:var(--faint);margin-top:4px;letter-spacing:.04em;}
+
+  /* skeleton/loading shimmer */
+  .skel{color:transparent !important;background:linear-gradient(90deg,rgba(255,255,255,.04),rgba(255,255,255,.12),rgba(255,255,255,.04));
+    background-size:200% 100%;animation:sh 1.3s infinite;border-radius:8px;-webkit-text-fill-color:transparent;}
+  @keyframes sh{to{background-position:-200% 0}}
+
+  @media(max-width:420px){
+    .card{padding:24px 18px 20px;border-radius:22px}
+    .hero .time{font-size:54px}
+    .port .code{font-size:26px}
+  }
+</style>
+</head>
+<body>
+  <div class="aurora"></div>
+  <div class="stars"></div>
+
+  <main class="card" role="main">
+    <div class="topline">
+      <div class="flightno" id="flightno"><span class="dot"></span>LY 5120</div>
+      <div class="airline">EL AL · B737</div>
+    </div>
+
+    <div class="route">
+      <div class="port">
+        <span class="flag">🇵🇱</span>
+        <div class="code">KRK</div>
+        <div class="city">Kraków</div>
+      </div>
+      <div class="path">
+        <div class="line"></div>
+        <div class="progress" id="progress"></div>
+        <span class="endpoint start"></span>
+        <span class="endpoint end" id="endpoint-end"></span>
+        <span class="plane" id="plane">✈️</span>
+      </div>
+      <div class="port right">
+        <span class="flag">🇮🇱</span>
+        <div class="code">TLV</div>
+        <div class="city">Tel Aviv</div>
+      </div>
+    </div>
+
+    <div class="statuswrap">
+      <span class="badge grey" id="badge"><span class="b-dot"></span><span id="badge-text">Loading…</span></span>
+    </div>
+
+    <div class="hero">
+      <div class="label" id="hero-label">Estimated landing</div>
+      <div class="time" id="hero-time">--:--</div>
+      <div class="tz" id="hero-tz">Tel Aviv time</div>
+      <div class="countdown" id="countdown">Checking the skies…</div>
+    </div>
+
+    <div class="meta">
+      <div class="cell"><div class="k">Scheduled departure</div><div class="v mono" id="m-dep">10:55 <small>KRK</small></div></div>
+      <div class="cell"><div class="k">Scheduled arrival</div><div class="v mono" id="m-sarr">14:56 <small>TLV</small></div></div>
+      <div class="cell"><div class="k">Estimated / actual</div><div class="v mono" id="m-earr">—</div></div>
+      <div class="cell"><div class="k">Delay</div><div class="v mono" id="m-delay">—</div></div>
+    </div>
+
+    <div class="foot">
+      <div class="links">
+        <a id="lnk-fr24" href="https://www.flightradar24.com/data/flights/ly5120" target="_blank" rel="noopener">Flightradar24 ↗</a>
+        <a id="lnk-fa" href="https://www.flightaware.com/live/flight/ELY5120" target="_blank" rel="noopener">FlightAware ↗</a>
+        <a id="lnk-tlv" href="https://www.iaa.gov.il/en/airports/ben-gurion/flight-board/?flightType=arrivals" target="_blank" rel="noopener">TLV Board ↗</a>
+      </div>
+      <div class="updated">
+        <span id="updated-text">—</span>
+        <button id="refresh" aria-label="Refresh">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+          Refresh
+        </button>
+      </div>
+      <div class="note">Tracking his flight home <span class="heart">❤</span><br><span id="note-extra">Updates automatically every minute.</span></div>
+      <div class="src" id="src">data: best-effort live · scheduled fallback</div>
+    </div>
+  </main>
+
+<script>
+(() => {
+  "use strict";
+
+  // ---- Flight constants (LY5120 KRK -> TLV) ----
+  const FLIGHT = "LY5120";
+  const ORIGIN = "KRK";
+  const DEST   = "TLV";
+  const TZ_DEP = "Europe/Warsaw";
+  const TZ_ARR = "Asia/Jerusalem";
+  // Scheduled local times (used for fallback display / countdown target)
+  const SCHED_DEP_LOCAL = { h: 10, m: 55 }; // Kraków local
+  const SCHED_ARR_LOCAL = { h: 14, m: 56 }; // Tel Aviv local
+
+  // Thresholds (minutes)
+  const EARLY_MIN = -3;   // <= -3 => early
+  const LATE_MIN  = 15;   // >= 15 => late
+
+  // CORS proxies (tried in order). Each takes an encoded target URL.
+  const PROXIES = [
+    u => "https://corsproxy.io/?url=" + encodeURIComponent(u),
+    u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
+    u => "https://api.codetabs.com/v1/proxy/?quest=" + encodeURIComponent(u),
+    u => "https://thingproxy.freeboard.io/fetch/" + u,
+  ];
+  const FR24_URL = "https://api.flightradar24.com/common/v1/flight/list.json"
+                 + "?query=" + FLIGHT + "&fetchBy=flight&page=1&limit=25";
+
+  // ---- DOM ----
+  const $ = id => document.getElementById(id);
+  const el = {
+    flightno: $("flightno"), badge: $("badge"), badgeText: $("badge-text"),
+    heroLabel: $("hero-label"), heroTime: $("hero-time"), heroTz: $("hero-tz"),
+    countdown: $("countdown"), progress: $("progress"), plane: $("plane"),
+    endEnd: $("endpoint-end"),
+    mDep: $("m-dep"), mSarr: $("m-sarr"), mEarr: $("m-earr"), mDelay: $("m-delay"),
+    updated: $("updated-text"), refresh: $("refresh"), src: $("src"), note: $("note-extra"),
+  };
+
+  // ---- time helpers ----
+  const fmtTime = (ms, tz) => new Intl.DateTimeFormat("en-GB", { hour:"2-digit", minute:"2-digit", hour12:false, timeZone:tz }).format(new Date(ms));
+  const fmtDate = (ms, tz) => new Intl.DateTimeFormat("en-GB", { weekday:"short", day:"numeric", month:"short", timeZone:tz }).format(new Date(ms));
+
+  // Build a UTC timestamp for a given local wall-clock time in a tz, on a given base date.
+  // Uses the tz offset derived from that date.
+  function localToMs(baseMs, tz, h, m){
+    // find offset of tz at baseMs
+    const off = tzOffsetMinutes(tz, baseMs);
+    const d = new Date(baseMs);
+    // get Y/M/D in that tz
+    const parts = new Intl.DateTimeFormat("en-CA",{year:"numeric",month:"2-digit",day:"2-digit",timeZone:tz}).formatToParts(d)
+      .reduce((a,p)=>(a[p.type]=p.value,a),{});
+    // wall time as if UTC, then subtract offset
+    const asUTC = Date.UTC(+parts.year, +parts.month-1, +parts.day, h, m, 0);
+    return asUTC - off*60000;
+  }
+  function tzOffsetMinutes(tz, ms){
+    const d = new Date(ms);
+    const s = new Intl.DateTimeFormat("en-US",{timeZone:tz,hour12:false,year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"}).format(d);
+    const [date,time] = s.split(", ");
+    const [mo,da,yr] = date.split("/");
+    let [hh,mm,ss] = time.split(":");
+    if(hh==="24") hh="00";
+    const asUTC = Date.UTC(+yr,+mo-1,+da,+hh,+mm,+ss);
+    return Math.round((asUTC - d.getTime())/60000);
+  }
+
+  // ---- state ----
+  let model = null;        // parsed flight model
+  let pollTimer = null;
+
+  // ---- fetch + parse ----
+  async function fetchJSON(url, ms=12000){
+    const ctrl = new AbortController();
+    const t = setTimeout(()=>ctrl.abort(), ms);
+    try{
+      const r = await fetch(url, { signal: ctrl.signal, headers:{ "Accept":"application/json" }, cache:"no-store" });
+      if(!r.ok) throw new Error("HTTP "+r.status);
+      const text = await r.text();
+      return JSON.parse(text);
+    } finally { clearTimeout(t); }
+  }
+
+  async function loadLive(){
+    for(const wrap of PROXIES){
+      try{
+        const json = await fetchJSON(wrap(FR24_URL));
+        const data = json?.result?.response?.data;
+        if(Array.isArray(data) && data.length){
+          const picked = pickFlight(data);
+          if(picked) return { ok:true, flight: picked };
+        }
+      }catch(e){ /* try next proxy */ }
+    }
+    return { ok:false };
+  }
+
+  // choose the right KRK->TLV occurrence: prefer live, then nearest upcoming, then most recent
+  function pickFlight(data){
+    const now = Date.now();
+    const cands = data.filter(f => {
+      const o = f?.airport?.origin?.code?.iata;
+      const d = f?.airport?.destination?.code?.iata;
+      return o===ORIGIN && d===DEST;
+    });
+    if(!cands.length) return null;
+    const score = f => {
+      const t = f.time||{};
+      const sArr = (t.scheduled?.arrival||0)*1000;
+      const live = f.status?.live === true;
+      const landed = !!(t.real?.arrival);
+      return { f, sArr, live, landed, dist: Math.abs(sArr-now), future: sArr>=now-2*3600e3 };
+    };
+    const scored = cands.map(score);
+    const liveOne = scored.find(s=>s.live);
+    if(liveOne) return liveOne.f;
+    // upcoming (arrival within future window), nearest first
+    const upcoming = scored.filter(s=>s.future).sort((a,b)=>a.dist-b.dist);
+    if(upcoming.length) return upcoming[0].f;
+    // else most recent past
+    scored.sort((a,b)=>b.sArr-a.sArr);
+    return scored[0].f;
+  }
+
+  function buildModelFromLive(f){
+    const t = f.time || {};
+    const sDep = (t.scheduled?.departure||0)*1000 || null;
+    const sArr = (t.scheduled?.arrival||0)*1000 || null;
+    const rDep = (t.real?.departure||0)*1000 || null;
+    const rArr = (t.real?.arrival||0)*1000 || null;
+    const eArr = (t.estimated?.arrival||0)*1000 || (t.other?.eta||0)*1000 || null;
+    const generic = (f.status?.generic?.status?.text || "").toLowerCase();
+    const live = f.status?.live === true;
+    const effArr = rArr || eArr || sArr;
+    const effDep = rDep || sDep;
+    const delayMin = (sArr && (rArr||eArr)) ? Math.round(((rArr||eArr) - sArr)/60000) : null;
+
+    let phase;
+    if(generic.includes("cancel")) phase = "cancelled";
+    else if(generic.includes("divert")) phase = "diverted";
+    else if(rArr || generic.includes("landed")) phase = "landed";
+    else if(live || rDep || generic.includes("departed") || generic.includes("air")) phase = "air";
+    else phase = "scheduled";
+
+    return { source:"live", sDep, sArr, rDep, rArr, eArr, effArr, effDep, delayMin, phase, live,
+             statusText: f.status?.text || "" };
+  }
+
+  function buildFallbackModel(){
+    const now = Date.now();
+    // target next TLV 14:56; if today's already passed by >3h, roll to tomorrow
+    let baseArr = localToMs(now, TZ_ARR, SCHED_ARR_LOCAL.h, SCHED_ARR_LOCAL.m);
+    if(baseArr < now - 3*3600e3) baseArr = localToMs(now + 24*3600e3, TZ_ARR, SCHED_ARR_LOCAL.h, SCHED_ARR_LOCAL.m);
+    let baseDep = localToMs(baseArr, TZ_DEP, SCHED_DEP_LOCAL.h, SCHED_DEP_LOCAL.m);
+    if(baseDep > baseArr) baseDep -= 24*3600e3;
+    return { source:"fallback", sDep:baseDep, sArr:baseArr, rDep:null, rArr:null, eArr:null,
+             effArr:baseArr, effDep:baseDep, delayMin:null,
+             phase: now < baseDep ? "scheduled" : "air", live:false, statusText:"" };
+  }
+
+  // ---- punctuality ----
+  function punctuality(m){
+    if(m.phase==="cancelled") return { cls:"red", text:"Cancelled" };
+    if(m.phase==="diverted")  return { cls:"red", text:"Diverted" };
+    if(m.delayMin===null){
+      if(m.phase==="landed") return { cls:"green", text:"Landed" };
+      if(m.phase==="air")    return { cls:"blue",  text:"In the air" };
+      return { cls:"grey", text:"Scheduled" };
+    }
+    const d = m.delayMin;
+    let cls, word;
+    if(d <= EARLY_MIN){ cls="blue";  word = Math.abs(d)+" min early"; }
+    else if(d >= LATE_MIN){ cls = d>=45 ? "red":"amber"; word = d+" min late"; }
+    else { cls="green"; word = d<=0 ? "On time" : "On time (+"+d+")"; }
+    const prefix = m.phase==="landed" ? "Landed · " : (m.phase==="air" ? "In the air · " : "");
+    return { cls, text: prefix + word, word, delay:d };
+  }
+
+  // ---- render ----
+  function render(){
+    if(!model) return;
+    const m = model;
+    const p = punctuality(m);
+
+    // badge
+    el.badge.className = "badge " + p.cls;
+    el.badgeText.textContent = p.text;
+
+    // flight no live dot
+    el.flightno.classList.toggle("live", m.phase==="air" && m.live);
+
+    // hero
+    const landed = m.phase==="landed";
+    el.heroLabel.textContent = landed ? "Landed at" : (m.rArr||m.eArr ? "Estimated landing" : "Scheduled landing");
+    el.heroTime.classList.remove("skel");
+    el.heroTime.textContent = m.effArr ? fmtTime(m.effArr, TZ_ARR) : "--:--";
+    el.heroTz.textContent = (m.effArr ? fmtDate(m.effArr, TZ_ARR)+" · " : "") + "Tel Aviv time";
+
+    // meta
+    el.mDep.innerHTML  = (m.sDep ? fmtTime(m.sDep, TZ_DEP) : "10:55") + ' <small>KRK</small>';
+    el.mSarr.innerHTML = (m.sArr ? fmtTime(m.sArr, TZ_ARR) : "14:56") + ' <small>TLV</small>';
+    if(m.rArr || m.eArr){
+      el.mEarr.innerHTML = fmtTime(m.rArr||m.eArr, TZ_ARR) + ' <small>'+(m.rArr?"actual":"est")+'</small>';
+      el.mEarr.className = "v mono " + (p.cls==="blue"?"up":p.cls==="green"?"ok":p.cls==="amber"?"warn":p.cls==="red"?"bad":"");
+    } else { el.mEarr.innerHTML = '<small style="font-size:13px">awaiting data</small>'; el.mEarr.className="v mono"; }
+
+    if(m.delayMin===null){ el.mDelay.textContent = "—"; el.mDelay.className="v mono"; }
+    else {
+      const d=m.delayMin;
+      el.mDelay.textContent = d===0 ? "On time" : (d>0 ? "+"+d+" min" : d+" min");
+      el.mDelay.className = "v mono " + (d<=EARLY_MIN?"up":d>=LATE_MIN?(d>=45?"bad":"warn"):"ok");
+    }
+
+    // progress + plane
+    let frac = 0;
+    if(m.phase==="landed") frac = 1;
+    else if(m.phase==="cancelled"||m.phase==="diverted") frac = 0;
+    else if(m.effDep && m.effArr && m.effArr>m.effDep){
+      frac = (Date.now()-m.effDep)/(m.effArr-m.effDep);
+      frac = Math.max(0, Math.min(1, frac));
+    }
+    el.progress.style.width = (frac*100).toFixed(1)+"%";
+    el.plane.style.left = (frac*100).toFixed(1)+"%";
+    el.endEnd.classList.toggle("reached", frac>=1);
+    if(m.phase==="landed") el.plane.textContent = "🛬";
+    else if(m.phase==="cancelled"||m.phase==="diverted") el.plane.textContent = "⚠️";
+    else el.plane.textContent = "✈️";
+
+    el.src.textContent = m.source==="live" ? "live · Flightradar24 (best-effort)" : "scheduled times (live feed unavailable)";
+    el.note.textContent = m.source==="live" ? "Updates automatically every minute." : "Showing the planned schedule — live feed couldn’t be reached. Tap a tracker above for detail.";
+
+    tickCountdown();
+  }
+
+  function tickCountdown(){
+    if(!model) return;
+    const m = model; const now = Date.now();
+    if(m.phase==="cancelled"){ el.countdown.innerHTML = "Flight cancelled"; return; }
+    if(m.phase==="diverted"){ el.countdown.innerHTML = "Flight diverted"; return; }
+    if(m.phase==="landed"){
+      const ago = m.effArr ? Math.max(0, Math.round((now-m.effArr)/60000)) : null;
+      el.countdown.innerHTML = ago===null ? '<span class="accent">Landed</span> — welcome home 🇮🇱'
+        : '<span class="accent">Landed</span> ' + humAgo(ago) + ' ago — welcome home 🇮🇱';
+      return;
+    }
+    if(!m.effArr){ el.countdown.textContent = "Awaiting schedule…"; return; }
+    const diff = m.effArr - now;
+    if(diff <= 0){
+      el.countdown.innerHTML = '<span class="accent">Landing now</span> 🛬';
+    } else {
+      el.countdown.innerHTML = (m.phase==="air"?"Lands in ":"Departs soon · lands in ") + '<span class="accent">'+humDur(diff)+'</span>';
+    }
+  }
+  function humDur(ms){
+    const tot = Math.round(ms/1000); const h=Math.floor(tot/3600); const mm=Math.floor((tot%3600)/60); const s=tot%60;
+    if(h>0) return h+"h "+String(mm).padStart(2,"0")+"m";
+    if(mm>0) return mm+"m "+String(s).padStart(2,"0")+"s";
+    return s+"s";
+  }
+  function humAgo(min){ const h=Math.floor(min/60),mm=min%60; return h>0?(h+"h "+mm+"m"):(mm+"m"); }
+
+  // ---- refresh cycle ----
+  let refreshing=false;
+  async function refresh(manual=false){
+    if(refreshing) return; refreshing=true;
+    if(manual) el.refresh.classList.add("spin");
+    if(!model){ el.heroTime.classList.add("skel"); }
+    let res;
+    try{ res = await loadLive(); }catch(e){ res={ok:false}; }
+    if(res.ok){ model = buildModelFromLive(res.flight); }
+    else if(!model){ model = buildFallbackModel(); }
+    el.updated.textContent = "Updated " + fmtTime(Date.now(), TZ_ARR) + " TLV";
+    render();
+    el.refresh.classList.remove("spin");
+    refreshing=false;
+  }
+
+  // tick countdown every second; refresh data every 60s
+  setInterval(tickCountdown, 1000);
+  function startPolling(){ if(pollTimer) clearInterval(pollTimer); pollTimer=setInterval(()=>refresh(false), 60000); }
+  el.refresh.addEventListener("click", ()=>refresh(true));
+  document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) refresh(false); });
+
+  // init
+  el.heroTime.classList.add("skel");
+  refresh(false).then(startPolling);
+})();
+</script>
+</body>
+</html>
